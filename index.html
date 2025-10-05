@@ -2,94 +2,96 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat WebRTC Simple</title>
+<title>Chat WebRTC Auto (GitHub Gist)</title>
 <style>
-  body { font-family: sans-serif; margin: 20px; }
+  body { font-family:sans-serif; margin:20px; }
   #chat { border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto; }
   #message { width:80%; }
-  textarea { width:100%; height:80px; }
   button { margin-top:5px; }
 </style>
 </head>
 <body>
-<h2>Chat WebRTC Simple</h2>
-
+<h2>Chat WebRTC Auto (GitHub)</h2>
 <div id="chat"></div>
-<input id="message" placeholder="Escribe un mensaje..."/>
+<input id="message" placeholder="Escribe un mensaje..." />
 <button id="sendBtn">Enviar</button>
 
-<hr>
-<h3>Señalización manual</h3>
-<p>Copiar y pegar los textos para conectarse:</p>
-<textarea id="signalIn" placeholder="Pega la señal aquí..."></textarea>
-<button id="applySignal">Aplicar señal</button>
-<textarea id="signalOut" placeholder="Señal para enviar al otro..." readonly></textarea>
-
 <script>
-let pc = new RTCPeerConnection();
-let dataChannel = pc.createDataChannel("chat");
-
 const chat = document.getElementById('chat');
 const msgInput = document.getElementById('message');
 const sendBtn = document.getElementById('sendBtn');
-const signalIn = document.getElementById('signalIn');
-const signalOut = document.getElementById('signalOut');
-const applySignal = document.getElementById('applySignal');
 
-function log(msg) {
+function log(msg){
   chat.innerHTML += msg + '<br>';
   chat.scrollTop = chat.scrollHeight;
 }
 
-// Enviar mensaje
-sendBtn.onclick = () => {
-  let text = msgInput.value.trim();
-  if(text && dataChannel.readyState === "open") {
-    dataChannel.send(text);
-    log("<b>Tú:</b> " + text);
-    msgInput.value = "";
-  }
-};
-
-// Recibir mensaje
+let pc = new RTCPeerConnection();
+let dataChannel = pc.createDataChannel("chat");
 dataChannel.onmessage = e => log("<b>Otro:</b> " + e.data);
 
-// Generar oferta al cargar
-pc.onicecandidate = e => {
-  if(e.candidate === null) {
-    signalOut.value = JSON.stringify(pc.localDescription);
+sendBtn.onclick = ()=>{
+  let text = msgInput.value.trim();
+  if(text && dataChannel.readyState==="open"){
+    dataChannel.send(text);
+    log("<b>Tú:</b> "+text);
+    msgInput.value="";
   }
 };
 
-async function createOffer() {
-  let offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  log("Oferta generada, copiar texto para el otro PC.");
-}
-createOffer();
+// --- GIST setup ---
+const GIST_ID = "TU_GIST_ID_AQUI"; // reemplaza con tu Gist ID
+const FILE_NAME = "signal.json";
 
-// Aplicar señal entrante
-applySignal.onclick = async () => {
-  let signal = signalIn.value.trim();
-  if(!signal) return alert("Pega la señal primero.");
-  let desc = JSON.parse(signal);
-  await pc.setRemoteDescription(desc);
-  if(desc.type === "offer") {
+async function getSignal(){
+  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
+  const data = await res.json();
+  return JSON.parse(data.files[FILE_NAME].content);
+}
+
+async function updateSignal(signal){
+  await fetch(`https://api.github.com/gists/${GIST_ID}`,{
+    method:"PATCH",
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({files:{[FILE_NAME]:{content:JSON.stringify(signal)}}})
+  });
+}
+
+// --- WebRTC ---
+pc.onicecandidate = e=>{
+  if(e.candidate===null){
+    updateSignal({offer: pc.localDescription, answer: ""});
+  }
+};
+
+async function init(){
+  let signal = await getSignal();
+
+  if(!signal.offer || signal.offer===""){
+    // Creamos la oferta
+    let offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    log("Oferta creada, esperando conexión...");
+  } else if(signal.offer && !signal.answer){
+    // Aplicamos la oferta y creamos respuesta
+    await pc.setRemoteDescription(signal.offer);
     let answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    signalOut.value = JSON.stringify(pc.localDescription);
-    log("Respuesta generada, copiar al otro PC.");
-  } else {
+    updateSignal({offer: signal.offer, answer: pc.localDescription});
+    log("Respuesta enviada!");
+  } else if(signal.offer && signal.answer){
+    await pc.setRemoteDescription(signal.answer);
     log("Conexión establecida!");
   }
+}
+
+pc.ondatachannel = event=>{
+  dataChannel = event.channel;
+  dataChannel.onmessage = e=>log("<b>Otro:</b> " + e.data);
+  log("Canal recibido!");
 };
 
-// Reconectar si el otro crea un canal
-pc.ondatachannel = event => {
-  dataChannel = event.channel;
-  dataChannel.onmessage = e => log("<b>Otro:</b> " + e.data);
-  log("Canal de datos recibido!");
-};
+init();
 </script>
 </body>
 </html>
