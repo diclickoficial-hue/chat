@@ -2,87 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat XP‑Friendly</title>
-<style>
-  body { font-family: sans-serif; background: #f0f0f0; margin:0; padding:0; display:flex; justify-content:center; align-items:center; height:100vh;}
-  #chatContainer { background:white; width:400px; max-width:95%; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.3); display:flex; flex-direction:column; }
-  #chat { flex:1; padding:10px; overflow-y:auto; border-bottom:1px solid #ccc; }
-  .msg { padding:5px 10px; margin:5px 0; border-radius:15px; max-width:70%; word-wrap:break-word; }
-  .you { background:#d1ffd1; align-self:flex-end; }
-  .other { background:#e0e0ff; align-self:flex-start; }
-  #inputContainer { display:flex; }
-  #message { flex:1; border:none; padding:10px; border-top-left-radius:0; border-bottom-left-radius:10px; outline:none; }
-  #sendBtn { padding:10px; border:none; background:#4CAF50; color:white; cursor:pointer; border-top-right-radius:0; border-bottom-right-radius:10px; }
-  #sendBtn:hover { background:#45a049; }
-</style>
+<title>Descargar GRUB4DOS</title>
 </head>
 <body>
-<div id="chatContainer">
-  <div id="chat"></div>
-  <div id="inputContainer">
-    <input id="message" placeholder="Escribe un mensaje..." autocomplete="off"/>
-    <button id="sendBtn">Enviar</button>
-  </div>
-</div>
-
-<script>
-// Configuración
-const chat = document.getElementById('chat');
-const msgInput = document.getElementById('message');
-const sendBtn = document.getElementById('sendBtn');
-
-// URL del buzón JSON en GitHub Pages (solo lectura/escritura)
-const SIGNAL_URL = "https://diclickoficial-hue.github.io/chat/signal.json"; // Reemplaza con tu ruta
-let lastSignal = { messages: [] };
-
-// Función para mostrar mensaje
-function addMsg(text, cls){
-  const div = document.createElement('div');
-  div.className = "msg " + cls;
-  div.textContent = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-// Enviar mensaje
-sendBtn.onclick = async ()=>{
-  let text = msgInput.value.trim();
-  if(!text) return;
-  addMsg(text,"you");
-  msgInput.value="";
-  lastSignal.messages.push({who:"you", text});
-  await updateSignal();
-};
-
-// Leer señal JSON
-async function getSignal(){
-  try{
-    const res = await fetch(SIGNAL_URL+"?t="+Date.now());
-    const data = await res.json();
-    return data;
-  } catch(e){ return { messages: [] }; }
-}
-
-// Actualizar señal JSON local (para XP usamos solo local)
-async function updateSignal(){
-  // En XP/Pages no podemos sobrescribir GitHub directamente
-  // Esta versión solo simula chat en una sola sesión
-  // Para multi-PC real, habría que usar mini servidor HTTP local o Dropbox/GDrive con JSON
-}
-
-// Refrescar mensajes cada 1.5s
-setInterval(async ()=>{
-  let data = await getSignal();
-  if(JSON.stringify(data) !== JSON.stringify(lastSignal)){
-    // Mostrar mensajes nuevos
-    lastSignal.messages.forEach(msg=>{
-      if(!document.body.innerHTML.includes(msg.text)){
-        addMsg(msg.text, msg.who==="you"?"you":"other");
-      }
-    });
-    lastSignal = data;
-  }
-},1500);
-</script>
+<h2>Descargar GRUB4DOS 0.4.4</h2>
+<a href="https://sitsa.dl.sourceforge.net/project/grub4dos/GRUB4DOS/grub4dos%200.4.4/grub4dos-0.4.4.zip?viasf=1" target="_blank">
+  <button>Descargar ahora</button>
+</a>
 </body>
 </html>
