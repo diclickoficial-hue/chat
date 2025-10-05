@@ -1,0 +1,11 @@
+timeout 5
+default 0
+
+title Slitaz Frugal
+root (hd0,1)       # hd0 = disco 0, 1 = partición D: (ajustar si Grub4Dos la ve diferente)
+kernel /boot/vmlinuz
+initrd /boot/rootfs.gz
+
+title Windows XP
+rootnoverify (hd0,0)   # hd0 = disco 0, 0 = partición C: XP
+chainloader +1
