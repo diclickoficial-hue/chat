@@ -2,96 +2,87 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Chat WebRTC Auto (GitHub Gist)</title>
+<title>Chat XP‑Friendly</title>
 <style>
-  body { font-family:sans-serif; margin:20px; }
-  #chat { border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto; }
-  #message { width:80%; }
-  button { margin-top:5px; }
+  body { font-family: sans-serif; background: #f0f0f0; margin:0; padding:0; display:flex; justify-content:center; align-items:center; height:100vh;}
+  #chatContainer { background:white; width:400px; max-width:95%; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.3); display:flex; flex-direction:column; }
+  #chat { flex:1; padding:10px; overflow-y:auto; border-bottom:1px solid #ccc; }
+  .msg { padding:5px 10px; margin:5px 0; border-radius:15px; max-width:70%; word-wrap:break-word; }
+  .you { background:#d1ffd1; align-self:flex-end; }
+  .other { background:#e0e0ff; align-self:flex-start; }
+  #inputContainer { display:flex; }
+  #message { flex:1; border:none; padding:10px; border-top-left-radius:0; border-bottom-left-radius:10px; outline:none; }
+  #sendBtn { padding:10px; border:none; background:#4CAF50; color:white; cursor:pointer; border-top-right-radius:0; border-bottom-right-radius:10px; }
+  #sendBtn:hover { background:#45a049; }
 </style>
 </head>
 <body>
-<h2>Chat WebRTC Auto (GitHub)</h2>
-<div id="chat"></div>
-<input id="message" placeholder="Escribe un mensaje..." />
-<button id="sendBtn">Enviar</button>
+<div id="chatContainer">
+  <div id="chat"></div>
+  <div id="inputContainer">
+    <input id="message" placeholder="Escribe un mensaje..." autocomplete="off"/>
+    <button id="sendBtn">Enviar</button>
+  </div>
+</div>
 
 <script>
+// Configuración
 const chat = document.getElementById('chat');
 const msgInput = document.getElementById('message');
 const sendBtn = document.getElementById('sendBtn');
 
-function log(msg){
-  chat.innerHTML += msg + '<br>';
+// URL del buzón JSON en GitHub Pages (solo lectura/escritura)
+const SIGNAL_URL = "https://diclickoficial-hue.github.io/chat/signal.json"; // Reemplaza con tu ruta
+let lastSignal = { messages: [] };
+
+// Función para mostrar mensaje
+function addMsg(text, cls){
+  const div = document.createElement('div');
+  div.className = "msg " + cls;
+  div.textContent = text;
+  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
-let pc = new RTCPeerConnection();
-let dataChannel = pc.createDataChannel("chat");
-dataChannel.onmessage = e => log("<b>Otro:</b> " + e.data);
-
-sendBtn.onclick = ()=>{
+// Enviar mensaje
+sendBtn.onclick = async ()=>{
   let text = msgInput.value.trim();
-  if(text && dataChannel.readyState==="open"){
-    dataChannel.send(text);
-    log("<b>Tú:</b> "+text);
-    msgInput.value="";
-  }
+  if(!text) return;
+  addMsg(text,"you");
+  msgInput.value="";
+  lastSignal.messages.push({who:"you", text});
+  await updateSignal();
 };
 
-// --- GIST setup ---
-const GIST_ID = "TU_GIST_ID_AQUI"; // reemplaza con tu Gist ID
-const FILE_NAME = "signal.json";
-
+// Leer señal JSON
 async function getSignal(){
-  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`);
-  const data = await res.json();
-  return JSON.parse(data.files[FILE_NAME].content);
+  try{
+    const res = await fetch(SIGNAL_URL+"?t="+Date.now());
+    const data = await res.json();
+    return data;
+  } catch(e){ return { messages: [] }; }
 }
 
-async function updateSignal(signal){
-  await fetch(`https://api.github.com/gists/${GIST_ID}`,{
-    method:"PATCH",
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({files:{[FILE_NAME]:{content:JSON.stringify(signal)}}})
-  });
+// Actualizar señal JSON local (para XP usamos solo local)
+async function updateSignal(){
+  // En XP/Pages no podemos sobrescribir GitHub directamente
+  // Esta versión solo simula chat en una sola sesión
+  // Para multi-PC real, habría que usar mini servidor HTTP local o Dropbox/GDrive con JSON
 }
 
-// --- WebRTC ---
-pc.onicecandidate = e=>{
-  if(e.candidate===null){
-    updateSignal({offer: pc.localDescription, answer: ""});
+// Refrescar mensajes cada 1.5s
+setInterval(async ()=>{
+  let data = await getSignal();
+  if(JSON.stringify(data) !== JSON.stringify(lastSignal)){
+    // Mostrar mensajes nuevos
+    lastSignal.messages.forEach(msg=>{
+      if(!document.body.innerHTML.includes(msg.text)){
+        addMsg(msg.text, msg.who==="you"?"you":"other");
+      }
+    });
+    lastSignal = data;
   }
-};
-
-async function init(){
-  let signal = await getSignal();
-
-  if(!signal.offer || signal.offer===""){
-    // Creamos la oferta
-    let offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    log("Oferta creada, esperando conexión...");
-  } else if(signal.offer && !signal.answer){
-    // Aplicamos la oferta y creamos respuesta
-    await pc.setRemoteDescription(signal.offer);
-    let answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    updateSignal({offer: signal.offer, answer: pc.localDescription});
-    log("Respuesta enviada!");
-  } else if(signal.offer && signal.answer){
-    await pc.setRemoteDescription(signal.answer);
-    log("Conexión establecida!");
-  }
-}
-
-pc.ondatachannel = event=>{
-  dataChannel = event.channel;
-  dataChannel.onmessage = e=>log("<b>Otro:</b> " + e.data);
-  log("Canal recibido!");
-};
-
-init();
+},1500);
 </script>
 </body>
 </html>
